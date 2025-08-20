@@ -1,8 +1,18 @@
-model Users {
-  id       String   @id @default(uuid())
-  name     String
-  password String
-  saved    Boolean
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+ 
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        String     @id @default(uuid())
+  name      String
+  password  String
+  saved     Boolean
+  synced    Boolean    @default(false)
 
   groups     Group[]
   chips      Chip[]
@@ -13,93 +23,101 @@ model Users {
 }
 
 model Group {
-  id      String  @id @default(uuid())
+  id      String   @id @default(uuid())
   name    String
   saved   Boolean
-  user_id String
+  synced  Boolean  @default(false)
+  userId  String
 
-  user    Users   @relation(fields: [user_id], references: [id])
+  user    User     @relation(fields: [userId], references: [id])
   clients Client[]
 }
 
 model Chip {
-  id       String   @id @default(uuid())
-  value    Int
-  client_id String
-  date     DateTime
-  saved    Boolean
-  user_id  String
+  id         String      @id @default(uuid())
+  value      Int
+  date       DateTime
+  saved      Boolean
+  synced     Boolean      @default(false)
+  userId     String
+  clientId   String
 
-  user        Users        @relation(fields: [user_id], references: [id])
-  client_chip CLient_chip[]
+  user        User         @relation(fields: [userId], references: [id])
+  clientChips ClientChip[]
 }
 
-model CLient_chip {
-  id        String  @id @default(uuid())
-  chip_id   String
-  client_id String
-  saved     Boolean
+model ClientChip {
+  id       String  @id @default(uuid())
+  chipId   String
+  clientId String
+  saved    Boolean
+  synced   Boolean @default(false)
 
-  chip   Chip   @relation(fields: [chip_id], references: [id])
-  client Client @relation(fields: [client_id], references: [id])
+  chip   Chip   @relation(fields: [chipId], references: [id])
+  client Client @relation(fields: [clientId], references: [id])
 }
 
 model Client {
-  id        String   @id @default(uuid())
-  name      String
-  group_id  String
-  use_chip  Boolean
-  saved     Boolean
-  user_id   String
+  id         String      @id @default(uuid())
+  name       String
+  useChip    Boolean
+  saved      Boolean
+  synced     Boolean     @default(false)
+  userId     String
+  groupId    String
 
-  user        Users        @relation(fields: [user_id], references: [id])
-  client_chip CLient_chip[]
-  group       Group        @relation(fields: [group_id], references: [id])
+  user        User         @relation(fields: [userId], references: [id])
+  group       Group        @relation(fields: [groupId], references: [id])
+  clientChips ClientChip[]
 }
 
 model Category {
   id       String    @id @default(uuid())
   name     String
   saved    Boolean
-  user_id  String
+  synced   Boolean   @default(false)
+  userId   String
 
-  user     Users     @relation(fields: [user_id], references: [id])
+  user     User      @relation(fields: [userId], references: [id])
   products Product[]
 }
 
 model Product {
-  id            String           @id @default(uuid())
+  id            String         @id @default(uuid())
   name          String
-  category_id   String
   value         Int
-  use_quantity  Boolean
+  useQuantity   Boolean
   quantity      Int?
   saved         Boolean
-  user_id       String
+  synced        Boolean        @default(false)
+  userId        String
+  categoryId    String
 
-  user          Users            @relation(fields: [user_id], references: [id])
-  category      Category         @relation(fields: [category_id], references: [id])
-  order_products Order_product[]
-} 
+  user          User           @relation(fields: [userId], references: [id])
+  category      Category       @relation(fields: [categoryId], references: [id])
+  orderProducts OrderProduct[]
+}
 
-model Order_product {
-  id         String   @id @default(uuid())
-  order_id   String
-  product_id String
-  saved      Boolean
+model OrderProduct {
+  id        String   @id @default(uuid())
+  orderId   String
+  productId String
+  saved     Boolean
+  synced    Boolean  @default(false)
 
-  product    Product  @relation(fields: [product_id], references: [id])
-  order      Order    @relation(fields: [order_id], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+  order   Order   @relation(fields: [orderId], references: [id])
 }
 
 model Order {
-  id          String           @id @default(uuid())
-  date        DateTime
-  client_id   String?
-  client_name String
-  saved       Boolean
-  user_id     String
+  id           String         @id @default(uuid())
+  date         DateTime
+  clientId     String?
+  clientName   String
+  saved        Boolean
+  synced       Boolean        @default(false)
+  userId       String
 
-  user         Users           @relation(fields: [user_id], references: [id])
-  order_products Order_product[]
+  user          User           @relation(fields: [userId], references: [id])
+  orderProducts OrderProduct[]
 }
