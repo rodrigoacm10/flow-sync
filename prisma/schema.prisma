@@ -1,0 +1,105 @@
+model Users {
+  id       String   @id @default(uuid())
+  name     String
+  password String
+  saved    Boolean
+
+  groups     Group[]
+  chips      Chip[]
+  clients    Client[]
+  categories Category[]
+  products   Product[]
+  orders     Order[]
+}
+
+model Group {
+  id      String  @id @default(uuid())
+  name    String
+  saved   Boolean
+  user_id String
+
+  user    Users   @relation(fields: [user_id], references: [id])
+  clients Client[]
+}
+
+model Chip {
+  id       String   @id @default(uuid())
+  value    Int
+  client_id String
+  date     DateTime
+  saved    Boolean
+  user_id  String
+
+  user        Users        @relation(fields: [user_id], references: [id])
+  client_chip CLient_chip[]
+}
+
+model CLient_chip {
+  id        String  @id @default(uuid())
+  chip_id   String
+  client_id String
+  saved     Boolean
+
+  chip   Chip   @relation(fields: [chip_id], references: [id])
+  client Client @relation(fields: [client_id], references: [id])
+}
+
+model Client {
+  id        String   @id @default(uuid())
+  name      String
+  group_id  String
+  use_chip  Boolean
+  saved     Boolean
+  user_id   String
+
+  user        Users        @relation(fields: [user_id], references: [id])
+  client_chip CLient_chip[]
+  group       Group        @relation(fields: [group_id], references: [id])
+}
+
+model Category {
+  id       String    @id @default(uuid())
+  name     String
+  saved    Boolean
+  user_id  String
+
+  user     Users     @relation(fields: [user_id], references: [id])
+  products Product[]
+}
+
+model Product {
+  id            String           @id @default(uuid())
+  name          String
+  category_id   String
+  value         Int
+  use_quantity  Boolean
+  quantity      Int?
+  saved         Boolean
+  user_id       String
+
+  user          Users            @relation(fields: [user_id], references: [id])
+  category      Category         @relation(fields: [category_id], references: [id])
+  order_products Order_product[]
+} 
+
+model Order_product {
+  id         String   @id @default(uuid())
+  order_id   String
+  product_id String
+  saved      Boolean
+
+  product    Product  @relation(fields: [product_id], references: [id])
+  order      Order    @relation(fields: [order_id], references: [id])
+}
+
+model Order {
+  id          String           @id @default(uuid())
+  date        DateTime
+  client_id   String?
+  client_name String
+  saved       Boolean
+  user_id     String
+
+  user         Users           @relation(fields: [user_id], references: [id])
+  order_products Order_product[]
+}
