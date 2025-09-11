@@ -6,8 +6,6 @@ import { signJwt } from '@/lib/jwt'
 export async function POST(req: Request) {
   const { email, password } = await req.json()
 
-  console.log(email, password)
-
   const existingUser = await prisma.user.findUnique({ where: { email } })
   if (existingUser) {
     return NextResponse.json({ error: 'Usuário já existe' }, { status: 400 })
@@ -19,7 +17,7 @@ export async function POST(req: Request) {
     data: { email, password: hashed, name: 'teste', saved: true },
   })
 
-  const token = signJwt({ id: user.id, email: user.email })
+  const token = await signJwt({ id: user.id, email: user.email })
 
   const response = NextResponse.json({ success: true })
   response.cookies.set('token', token, {

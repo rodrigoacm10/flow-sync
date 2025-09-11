@@ -2,17 +2,15 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { verifyJwt } from '@/lib/jwt'
 
-export function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const token = req.cookies.get('token')?.value
-
-  console.log('TOKEN', token)
 
   if (!token) {
     return NextResponse.redirect(new URL('/', req.url))
   }
 
-  const decoded = verifyJwt(token)
-  console.log('DECODED', decoded)
+  const decoded = await verifyJwt(token)
+
   if (!decoded) {
     return NextResponse.redirect(new URL('/', req.url))
   }

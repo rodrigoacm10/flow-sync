@@ -1,18 +1,25 @@
-import jwt, { Secret } from 'jsonwebtoken'
+import { JWTPayload, SignJWT, jwtVerify } from 'jose'
 
-const SECRET: Secret = process.env.JWT_SECRET as string
+const SECRET = new TextEncoder().encode(process.env.JWT_SECRET)
 
-export function signJwt(payload: object, expiresIn: string | number = '1h') {
-  console.log('SECRET SIGN', SECRET)
-  return jwt.sign(payload, SECRET, { expiresIn: '1h' })
+export async function signJwt(payload: JWTPayload) {
+  try {
+    return await new SignJWT(payload)
+      .setProtectedHeader({ alg: 'HS256' })
+      .setExpirationTime('1h')
+      .sign(SECRET)
+  } catch (err) {
+    console.error('JWT SIGN ERROR', err)
+    throw err
+  }
 }
 
-export function verifyJwt(token: string) {
+export async function verifyJwt(token: string) {
   try {
-    console.log('TOKEN', token)
-    console.log('SECRET VERIFY', SECRET)
-
-    return jwt.verify(token, SECRET)
+    const { payload } = await jwtVerify(token, SECRET, {
+      algorithms: ['HS256'],
+    })
+    return payload
   } catch (err) {
     console.error('JWT VERIFY ERROR', err)
     return null

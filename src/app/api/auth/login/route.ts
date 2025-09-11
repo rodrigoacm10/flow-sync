@@ -1,4 +1,3 @@
-// app/api/auth/login/route.ts
 import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import prisma from '@/lib/prisma'
@@ -9,10 +8,7 @@ export async function POST(req: Request) {
 
   const user = await prisma.user.findUnique({ where: { email } })
   if (!user) {
-    return NextResponse.json(
-      { error: 'Usuário não encontrado' },
-      { status: 404 },
-    )
+    return NextResponse.json({ error: 'User not found' }, { status: 404 })
   }
 
   const valid = await bcrypt.compare(password, user.password)
@@ -20,7 +16,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Senha inválida' }, { status: 401 })
   }
 
-  const token = signJwt({ id: user.id, email: user.email })
+  const token = await signJwt({ id: user.id, email: user.email })
 
   const response = NextResponse.json({ success: true })
   response.cookies.set('token', token, {
