@@ -10,6 +10,7 @@ generator client {
 model User {
   id        String     @id @default(uuid())
   name      String
+  email     String     @unique   
   password  String
   saved     Boolean
   synced    Boolean    @default(false)

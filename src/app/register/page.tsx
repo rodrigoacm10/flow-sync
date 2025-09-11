@@ -4,14 +4,20 @@ import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 
-const schema = z.object({
-  email: z.string().email('Email inválido'),
-  password: z.string().min(6, 'Mínimo 6 caracteres'),
-})
+const schema = z
+  .object({
+    email: z.string().email('Email inválido'),
+    password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres'),
+    confirmPassword: z.string().min(6),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'As senhas não coincidem',
+    path: ['confirmPassword'],
+  })
 
 type FormData = z.infer<typeof schema>
 
-export default function LoginPage() {
+export default function RegisterPage() {
   const {
     register,
     handleSubmit,
@@ -21,7 +27,7 @@ export default function LoginPage() {
   })
 
   const onSubmit = async (data: FormData) => {
-    const res = await fetch('/api/auth/login', {
+    const res = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -30,13 +36,13 @@ export default function LoginPage() {
     if (res.ok) {
       window.location.href = '/dashboard'
     } else {
-      alert('Login falhou')
+      const err = await res.json()
+      alert(err.error || 'Erro ao registrar')
     }
   }
 
   return (
     <div className="bg-black/60 min-h-screen">
-      <p className="text-white">aaaaa</p>
       <form
         onSubmit={handleSubmit(onSubmit)}
         className="flex flex-col gap-2 w-64 text-white"
@@ -47,16 +53,15 @@ export default function LoginPage() {
         <input type="password" placeholder="Senha" {...register('password')} />
         {errors.password && <p>{errors.password.message}</p>}
 
-        <button type="submit">Entrar</button>
+        <input
+          type="password"
+          placeholder="Confirmar senha"
+          {...register('confirmPassword')}
+        />
+        {errors.confirmPassword && <p>{errors.confirmPassword.message}</p>}
+
+        <button type="submit">Criar conta</button>
       </form>
-      <button
-        className="text-white"
-        onClick={() => {
-          window.location.href = '/register'
-        }}
-      >
-        cadastrar
-      </button>
     </div>
   )
 }
