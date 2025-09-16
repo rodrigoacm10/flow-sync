@@ -70,6 +70,7 @@ model Client {
   user        User         @relation(fields: [userId], references: [id])
   group       Group        @relation(fields: [groupId], references: [id])
   clientChips ClientChip[]
+  orders      Order[]
 }
 
 model Category {
@@ -100,13 +101,15 @@ model Product {
 }
 
 model OrderProduct {
-  id        String   @id @default(uuid())
-  orderId   String
-  productId String
-  saved     Boolean
-  synced    Boolean  @default(false)
+  id          String   @id @default(uuid())
+  orderId     String
+  productName String
+  productId   String?
+  quantity    Int
+  saved       Boolean
+  synced      Boolean  @default(false)
 
-  product Product @relation(fields: [productId], references: [id])
+  product Product? @relation(fields: [productId], references: [id])
   order   Order   @relation(fields: [orderId], references: [id])
 }
 
@@ -120,5 +123,6 @@ model Order {
   userId       String
 
   user          User           @relation(fields: [userId], references: [id])
+  client        Client?         @relation(fields: [clientId], references: [id]) 
   orderProducts OrderProduct[]
 }

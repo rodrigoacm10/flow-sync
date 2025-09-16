@@ -4,14 +4,21 @@ import { verifyJwt } from '@/lib/jwt'
 
 export async function middleware(req: NextRequest) {
   const token = req.cookies.get('token')?.value
+  const { pathname } = req.nextUrl
 
   if (!token) {
+    if (pathname.startsWith('/api')) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+    }
     return NextResponse.redirect(new URL('/', req.url))
   }
 
   const decoded = await verifyJwt(token)
 
   if (!decoded) {
+    if (pathname.startsWith('/api')) {
+      return NextResponse.json({ error: 'Token inválido' }, { status: 401 })
+    }
     return NextResponse.redirect(new URL('/', req.url))
   }
 
@@ -19,5 +26,8 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*'], // protege dashboard
+  matcher: [
+    '/dashboard/:path*', // páginas protegidas
+    '/api/:path*', // APIs protegidas
+  ],
 }
