@@ -22,12 +22,14 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL('/', req.url))
   }
 
+  console.log('LOGIN ->', pathname)
+
   return NextResponse.next()
 }
 
 export const config = {
   matcher: [
     '/dashboard/:path*', // páginas protegidas
-    '/api/:path*', // APIs protegidas
+    // '/api/:path*', // APIs protegidas
   ],
 }

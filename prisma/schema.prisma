@@ -61,14 +61,14 @@ model ClientChip {
 model Client {
   id         String      @id @default(uuid())
   name       String
-  useChip    Boolean
+  // useChip    Boolean
   saved      Boolean
   synced     Boolean     @default(false)
   userId     String
-  groupId    String
+  groupId    String?
 
   user        User         @relation(fields: [userId], references: [id])
-  group       Group        @relation(fields: [groupId], references: [id])
+  group       Group?        @relation(fields: [groupId], references: [id])
   clientChips ClientChip[]
   orders      Order[]
 }
@@ -89,14 +89,14 @@ model Product {
   name          String
   value         Int
   useQuantity   Boolean
-  quantity      Int?
+  quantity      Int            @default(0)           
   saved         Boolean
   synced        Boolean        @default(false)
   userId        String
-  categoryId    String
+  categoryId    String?
 
   user          User           @relation(fields: [userId], references: [id])
-  category      Category       @relation(fields: [categoryId], references: [id])
+  category      Category?       @relation(fields: [categoryId], references: [id])
   orderProducts OrderProduct[]
 }
 
