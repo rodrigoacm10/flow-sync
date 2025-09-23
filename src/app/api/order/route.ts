@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { OrderService } from '@/services/orderService'
 import { getUserIdFromRequest } from '@/lib/auth'
+import {
+  CreateOrderProduct,
+  OrderProductService,
+} from '@/services/orderProductsService'
 
 export async function GET(req: NextRequest) {
   try {
@@ -9,12 +13,12 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const date = searchParams.get('date') ?? undefined
 
-    const orders = await new OrderService().list({
+    const response = await new OrderService().list({
       userId,
       date,
     })
 
-    return NextResponse.json(orders)
+    return NextResponse.json({ data: response }, { status: 201 })
   } catch (err: any) {
     console.error(err)
     return NextResponse.json(
@@ -28,16 +32,30 @@ export async function POST(req: NextRequest) {
   try {
     const userId = await getUserIdFromRequest(req)
 
-    const body = await req.json()
+    const { orderProducts, ...body } = await req.json()
 
-    const newOrder = await new OrderService().create({
+    const order = await new OrderService().create({
       ...body,
       userId,
       saved: true, // obrigatório ser true
       synced: false, // default off
     })
 
-    return NextResponse.json(newOrder)
+    const orderProductOrderId = orderProducts.map(
+      (obj: CreateOrderProduct) => ({
+        ...obj,
+        orderId: order.id,
+      }),
+    )
+
+    const orderProduct = await new OrderProductService().create(
+      orderProductOrderId,
+    )
+
+    return NextResponse.json(
+      { data: { ...order, orderProducts: orderProduct } },
+      { status: 201 },
+    )
   } catch (err: any) {
     console.error(err)
     return NextResponse.json(

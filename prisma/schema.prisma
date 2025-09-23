@@ -61,16 +61,17 @@ model ClientChip {
 model Client {
   id         String      @id @default(uuid())
   name       String
-  // useChip    Boolean
   saved      Boolean
   synced     Boolean     @default(false)
   userId     String
   groupId    String?
 
   user        User         @relation(fields: [userId], references: [id])
-  group       Group?        @relation(fields: [groupId], references: [id])
+  group       Group?       @relation(fields: [groupId], references: [id])
   clientChips ClientChip[]
   orders      Order[]
+
+  @@unique([name, userId])
 }
 
 model Category {
@@ -106,6 +107,7 @@ model OrderProduct {
   productName String
   productId   String?
   quantity    Int
+  price       Int
   saved       Boolean
   synced      Boolean  @default(false)
 

@@ -14,11 +14,12 @@ import { PrismaClient } from '@prisma/client'
 //   order   Order   @relation(fields: [orderId], references: [id])
 // }
 
-interface CreateOrderProduct {
+export interface CreateOrderProduct {
   orderId: string
   productId?: string
   productName: string
   quantity: number
+  price: number
   saved: boolean
   synced: boolean
 }

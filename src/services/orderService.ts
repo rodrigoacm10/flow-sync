@@ -42,7 +42,10 @@ export class OrderService {
       if (!clientExist) throw new Error('Client didnt exist')
     }
 
-    return await this.prismaClient.order.create({ data: data })
+    return await this.prismaClient.order.create({
+      data: data,
+      include: { orderProducts: true },
+    })
   }
 
   async list(data: ListOrder) {
@@ -50,5 +53,9 @@ export class OrderService {
       where: { userId: data.userId, date: data?.date },
       include: { orderProducts: true },
     })
+  }
+
+  async delete(orderId: string) {
+    return await this.prismaClient.order.delete({ where: { id: orderId } })
   }
 }

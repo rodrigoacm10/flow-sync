@@ -37,9 +37,20 @@ export class CLientService {
     return await this.prismaClient.client.create({ data })
   }
 
+  async find(clientId: string) {
+    return await this.prismaClient.client.findUnique({
+      where: { id: clientId },
+    })
+  }
+
   async list(data: ListClient) {
     return await this.prismaClient.client.findMany({
       where: { userId: data.userId, groupId: data.groupId },
+      include: { group: true },
     })
+  }
+
+  async delete(clientId: string) {
+    return await this.prismaClient.client.delete({ where: { id: clientId } })
   }
 }
