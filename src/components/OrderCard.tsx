@@ -24,7 +24,6 @@ export const OrderCard = ({
   order: Order & { orderProducts: OrderProduct[] }
 }) => {
   const [checked, seChecked] = useState(order.concluded)
-  console.log('ORDER -><>', order)
   const { changeStatus } = useOrders()
 
   return (
