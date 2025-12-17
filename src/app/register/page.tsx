@@ -42,7 +42,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="bg-black/60 min-h-screen flex items-center justify-center flex-col">
+    <div className="bg-gradient-to-br from-[#000000]/100 to-[#2b2b2b] min-h-screen flex items-center justify-center flex-col">
       <form
         onSubmit={handleSubmit(onSubmit)}
         className="flex flex-col gap-2 w-64 text-white bg-red-300 items-center rounded-xl px-2 py-5"

@@ -48,6 +48,13 @@ export class OrderService {
     })
   }
 
+  async check(orderId: string, to: boolean) {
+    return await this.prismaClient.order.update({
+      where: { id: orderId },
+      data: { concluded: to },
+    })
+  }
+
   async list(data: ListOrder) {
     return await this.prismaClient.order.findMany({
       where: { userId: data.userId, date: data?.date },

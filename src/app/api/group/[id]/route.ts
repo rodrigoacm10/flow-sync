@@ -1,4 +1,4 @@
-import { OrderService } from '@/services/orderService'
+import { GroupService } from '@/services/groupService'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function DELETE(
@@ -8,14 +8,14 @@ export async function DELETE(
   try {
     const { id } = params
 
-    const resposne = await new OrderService().delete(id)
+    const response = new GroupService().delete(id)
 
     return NextResponse.json({ success: true }, { status: 200 })
   } catch (err: any) {
     console.error(err)
     return NextResponse.json(
-      { error: err.message || 'Internal Server Error' },
-      { status: 400 },
+      { error: err?.message || 'Internal Server error' },
+      { status: 500 },
     )
   }
 }

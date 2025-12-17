@@ -40,4 +40,8 @@ export class GroupService {
       data: { name: data.name },
     })
   }
+
+  async delete(groupId: string) {
+    return await this.prismaCLient.group.delete({ where: { id: groupId } })
+  }
 }

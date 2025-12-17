@@ -3,16 +3,17 @@ import prisma from '@/lib/prisma'
 // model Client {
 //   id         String      @id @default(uuid())
 //   name       String
-//   useChip    Boolean
 //   saved      Boolean
 //   synced     Boolean     @default(false)
 //   userId     String
 //   groupId    String?
 //
 //   user        User         @relation(fields: [userId], references: [id])
-//   group       Group?        @relation(fields: [groupId], references: [id])
+//   group       Group?       @relation(fields: [groupId], references: [id])
 //   clientChips ClientChip[]
 //   orders      Order[]
+//
+//   @@unique([name, userId])
 // }
 
 interface CreateClient {
@@ -40,13 +41,14 @@ export class CLientService {
   async find(clientId: string) {
     return await this.prismaClient.client.findUnique({
       where: { id: clientId },
+      include: { clientChips: true, orders: true, group: true },
     })
   }
 
   async list(data: ListClient) {
     return await this.prismaClient.client.findMany({
       where: { userId: data.userId, groupId: data.groupId },
-      include: { group: true },
+      include: { clientChips: true, orders: true, group: true },
     })
   }
 

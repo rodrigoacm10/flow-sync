@@ -27,6 +27,12 @@ interface CreateProduct {
   categoryId?: string
 }
 
+interface ListProduct {
+  userId: string
+  categoryId?: string
+  name?: string
+}
+
 export class ProductService {
   constructor(private readonly prismaCLient = prisma) {}
 
@@ -34,7 +40,13 @@ export class ProductService {
     return await this.prismaCLient.product.create({ data })
   }
 
-  async list(userId: string) {
-    return await this.prismaCLient.product.findMany({ where: { userId } })
+  async list(data: ListProduct) {
+    return await this.prismaCLient.product.findMany({
+      where: { userId: data.userId, categoryId: data.categoryId },
+    })
+  }
+
+  async delete(productId: string) {
+    return await this.prismaCLient.product.delete({ where: { id: productId } })
   }
 }

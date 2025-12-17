@@ -1,14 +1,11 @@
 import { OrderService } from '@/services/orderService'
 import { NextRequest, NextResponse } from 'next/server'
 
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: { id: string } },
-) {
+export async function POST(req: NextRequest) {
   try {
-    const { id } = params
+    const { orderId, to } = await req.json()
 
-    const resposne = await new OrderService().delete(id)
+    const response = await new OrderService().check(orderId, to)
 
     return NextResponse.json({ success: true }, { status: 200 })
   } catch (err: any) {

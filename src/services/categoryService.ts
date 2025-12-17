@@ -28,17 +28,37 @@ export class CategoryService {
   constructor(private readonly prismaCLient = prisma) {}
 
   async create(data: CreateCategory) {
-    return await this.prismaCLient.category.create({ data })
+    return await this.prismaCLient.category.create({
+      data,
+      include: { products: true },
+    })
+  }
+
+  async find(categoryId: string) {
+    return await this.prismaCLient.category.findUnique({
+      where: { id: categoryId },
+      include: { products: true },
+    })
   }
 
   async list(userId: string) {
-    return await this.prismaCLient.category.findMany({ where: { userId } })
+    return await this.prismaCLient.category.findMany({
+      where: { userId },
+      include: { products: true },
+    })
   }
 
   async edit(data: EditCategory) {
     return await this.prismaCLient.category.update({
       where: { id: data.categoryId },
       data: { name: data.name },
+      include: { products: true },
+    })
+  }
+
+  async delete(categoryId: string) {
+    return await this.prismaCLient.category.delete({
+      where: { id: categoryId },
     })
   }
 }

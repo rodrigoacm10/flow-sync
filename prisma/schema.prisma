@@ -1,8 +1,7 @@
 datasource db {
   provider = "sqlite"
-  url      = env("DATABASE_URL")
 }
- 
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -32,6 +31,8 @@ model Group {
 
   user    User     @relation(fields: [userId], references: [id])
   clients Client[]
+
+  @@unique([name, userId])
 }
 
 model Chip {
@@ -123,6 +124,7 @@ model Order {
   saved        Boolean
   synced       Boolean        @default(false)
   userId       String
+  concluded    Boolean        @default(false)
 
   user          User           @relation(fields: [userId], references: [id])
   client        Client?         @relation(fields: [clientId], references: [id]) 
