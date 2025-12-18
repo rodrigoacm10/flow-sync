@@ -1,3 +1,5 @@
+'use client'
+
 import {
   Dialog,
   DialogClose,
@@ -9,10 +11,20 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { Button } from './ui/button'
-import { useMemo, useState } from 'react'
+import { Input } from './ui/input'
 import { SelectRegistred } from './order/SelectRegistred'
 import { Combobox } from './Combobox'
-import { Input } from './ui/input'
+
+import { useMemo } from 'react'
+import { useForm, Controller, useFieldArray } from 'react-hook-form'
+import { z } from 'zod'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useOrders } from '@/hooks/useOrders'
+import { api } from '@/lib/api'
+import { CreateOrderSchema } from '@/schemas/orderSchema'
+import { getUniqueProduct } from '@/utils/getUniqueProduct'
+import { getTodayDate } from '@/utils/getTodayDate'
+import { getDateToISO } from '@/utils/getDateToISO'
 
 const mockCLient = [
   {
@@ -52,292 +64,505 @@ const mockProduct = [
   },
 ]
 
-const getDetails = ({
-  id,
-  values,
-}: {
-  id: string
-  values: (any & { id: string })[]
-}) => {
-  return values.find((value) => value.id === id)
-}
-
-function todayISOInTimeZone(timeZone: string) {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(new Date())
-
-  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? ''
-  return `${get('year')}-${get('month')}-${get('day')}`
-}
-
 export function CreateOrder({ children }: React.ComponentProps<'div'>) {
-  const userTimeZone = 'America/Recife'
+  const { changeStatus } = useOrders()
 
-  const [orderDate, setOrderDate] = useState(() =>
-    todayISOInTimeZone(userTimeZone),
-  )
-  const [registredClient, setRegistredClient] = useState('registred')
-  const [registredProduct, setRegistredProduct] = useState('registred')
-  const [clientId, setClientId] = useState('')
-  const [productId, setProductId] = useState('')
-  const [quantityProduct, setQuantityProduct] = useState(1)
-  const [priceProduct, setPriceProduct] = useState(1)
-  const [nameProduct, setNameProduct] = useState('')
-  const [orderProducts, setOrderProducts] = useState<any[]>([])
-  const [nameClient, setNameClient] = useState('')
+  const userTimeZone = 'America/Recife'
+  // ✅ use input type for RHF (what comes from the form)
+  type CreateOrderForm = z.input<typeof CreateOrderSchema>
+
+  const form = useForm<CreateOrderForm>({
+    resolver: zodResolver(CreateOrderSchema),
+    defaultValues: {
+      date: getTodayDate(userTimeZone),
+
+      clientType: 'registred',
+      clientId: null,
+      clientName: '',
+
+      productType: 'registred',
+      currentProductId: null,
+      currentProductName: '',
+      currentProductPrice: 1,
+      currentProductQuantity: 1,
+
+      orderProducts: [],
+    },
+    mode: 'onSubmit',
+  })
+
+  const {
+    control,
+    register,
+    setValue,
+    getValues,
+    watch,
+    setError,
+    clearErrors,
+    handleSubmit,
+    formState,
+  } = form
+  const { errors } = formState
+
+  const { fields, append, replace } = useFieldArray({
+    control,
+    name: 'orderProducts',
+  })
+
+  const clientType = watch('clientType')
+  const clientId = watch('clientId')
+  const productType = watch('productType')
+  const currentQty = watch('currentProductQuantity')
+  const currentProductId = watch('currentProductId')
 
   const clientDetails = useMemo(() => {
-    return clientId ? getDetails({ id: clientId, values: mockCLient }) : null
-  }, [clientId])
+    if (clientType !== 'registred') return null
+    if (!clientId) return null
+    return mockCLient.find((c) => c.id === clientId) ?? null
+  }, [clientId, clientType])
 
   const clientValue = useMemo(() => {
-    return clientDetails
-      ? clientDetails.clientChips.reduce(
-          (acc: number, value: any) => (acc += value.chip.value),
-          0,
-        )
-      : null
+    if (!clientDetails) return null
+    return clientDetails.clientChips.reduce(
+      (acc: number, v: any) => acc + v.chip.value,
+      0,
+    )
   }, [clientDetails])
 
-  const productDetails = useMemo(() => {
-    if (registredProduct === 'registred') {
-      return productId
-        ? getDetails({ id: productId, values: mockProduct })
-        : null
-    } else if (registredProduct === 'notRegistred') {
-      return quantityProduct && nameProduct && priceProduct
-        ? {
-            // id: '71e023a8-0d1d-4ae8-90aa-c34aacdca0dd',
-            name: nameProduct,
-            value: priceProduct,
-            // useQuantity: false,
-            quantity: quantityProduct,
-            saved: true,
-            synced: false,
-            // userId: '56bc99cd-9dbc-4465-9e72-6c72fd7ab780',
-            // categoryId: null,
-          }
-        : null
+  // “preview” do preço quando produto é registrado
+  const registredProductDetails = useMemo(() => {
+    if (productType !== 'registred') return null
+    if (!currentProductId) return null
+    return mockProduct.find((p) => p.id === currentProductId) ?? null
+  }, [currentProductId, productType])
+
+  const orderProductsUnique = useMemo(
+    () => getUniqueProduct({ values: fields }),
+    [fields],
+  )
+
+  const orderTotal = useMemo(() => {
+    return orderProductsUnique.reduce((acc, p) => acc + p.price * p.quantity, 0)
+  }, [orderProductsUnique])
+
+  const remaining = useMemo(() => {
+    if (clientType !== 'registred') return null
+    if (clientValue == null) return null
+    return clientValue - orderTotal
+  }, [clientType, clientValue, orderTotal])
+
+  function handleChangeClientType(next: 'registred' | 'notRegistred') {
+    setValue('clientType', next)
+    clearErrors(['clientId', 'clientName'])
+    setValue('clientId', null)
+    setValue('clientName', '')
+  }
+
+  function handleChangeProductType(next: 'registred' | 'notRegistred') {
+    setValue('productType', next)
+    clearErrors([
+      'currentProductId',
+      'currentProductName',
+      'currentProductPrice',
+      'currentProductQuantity',
+    ])
+    setValue('currentProductId', null)
+    setValue('currentProductName', '')
+    setValue('currentProductPrice', 1)
+    setValue('currentProductQuantity', 1)
+  }
+
+  function handleAddProduct() {
+    const attOrdersProducts = () => {
+      const newOrderProducts = getUniqueProduct({
+        values: getValues('orderProducts'),
+      })
+
+      setValue('orderProducts', newOrderProducts)
     }
-  }, [productId, quantityProduct, priceProduct, nameProduct, registredProduct])
 
-  const orderProductsUnique = useMemo(() => {
-    const products: any[] = []
+    clearErrors([
+      'currentProductId',
+      'currentProductName',
+      'currentProductPrice',
+      'currentProductQuantity',
+    ])
 
-    for (const op of orderProducts) {
-      const idx = products.findIndex((p) => p.productName === op.productName)
+    const qty = Number(watch('currentProductQuantity') ?? 1)
+    if (!Number.isFinite(qty) || qty <= 0) {
+      setError('currentProductQuantity', {
+        type: 'manual',
+        message: 'Quantidade precisa ser maior que 0.',
+      })
+      return
+    }
 
-      if (idx >= 0) products[idx].quantity += op.quantity
-      else
-        products.push({
-          ...op,
-          quantity: op.quantity,
+    if (productType === 'registred') {
+      const pid = watch('currentProductId')
+      if (!pid) {
+        setError('currentProductId', {
+          type: 'manual',
+          message: 'Selecione um produto registrado.',
         })
+        return
+      }
+      const prod = mockProduct.find((p) => p.id === pid)
+      if (!prod) {
+        setError('currentProductId', {
+          type: 'manual',
+          message: 'Produto inválido.',
+        })
+        return
+      }
+
+      append({
+        productName: prod.name,
+        productId: prod.id,
+        quantity: qty,
+        price: prod.value,
+        saved: true,
+        synced: false,
+      })
+
+      setValue('currentProductId', null)
+      setValue('currentProductQuantity', 1)
+
+      attOrdersProducts()
+      return
     }
 
-    return products
-  }, [orderProducts])
+    // notRegistred
+    const name = (watch('currentProductName') ?? '').trim()
+    const price = Number(watch('currentProductPrice') ?? 0)
 
-  const orderProductsUniqueValue = useMemo(() => {
-    return orderProductsUnique.length
-      ? orderProductsUnique.reduce(
-          (acc, value) => (acc += value.price * value.quantity),
-          0,
-        )
+    if (!name) {
+      setError('currentProductName', {
+        type: 'manual',
+        message: 'Informe o nome do produto.',
+      })
+      return
+    }
+    if (!Number.isFinite(price) || price <= 0) {
+      setError('currentProductPrice', {
+        type: 'manual',
+        message: 'Preço precisa ser maior que 0.',
+      })
+      return
+    }
+
+    append({
+      productName: name,
+      productId: null,
+      quantity: qty,
+      price,
+      saved: true,
+      synced: false,
+    })
+
+    setValue('currentProductName', '')
+    setValue('currentProductPrice', 1)
+    setValue('currentProductQuantity', 1)
+    attOrdersProducts()
+  }
+
+  const onSubmit = async (data: CreateOrderForm) => {
+    console.log('SUBMIT RAW:', data)
+
+    const result = CreateOrderSchema.safeParse(data)
+    if (!result.success) {
+      console.log('ZOD ERROR:', result.error.flatten())
+      return
+    }
+
+    const parsed = result.data
+    console.log('SUBMIT PARSED:', parsed)
+
+    const isRegClient = parsed.clientType === 'registred'
+    const client = isRegClient
+      ? mockCLient.find((c) => c.id === parsed.clientId) ?? null
       : null
-  }, [])
+
+    const payload = {
+      date: getDateToISO(parsed.date),
+      clientId: isRegClient ? parsed.clientId ?? null : null,
+      clientName: isRegClient ? client?.name ?? '' : parsed.clientName ?? '',
+      orderProducts: parsed.orderProducts.map((p) => ({
+        productName: p.productName,
+        productId: p.productId ?? null,
+        quantity: p.quantity,
+        price: p.price,
+        saved: true,
+        synced: false,
+      })),
+      saved: true,
+      synced: false,
+    }
+
+    // console.log('PAYLOAD:', payload)
+    await api.post('/order', payload)
+    changeStatus()
+  }
+
+  // não está dando nada no console
+  const onInvalid = (errs: any) => {
+    console.log('FORM INVALID:', errs)
+  }
 
   return (
     <Dialog>
-      <form>
-        <DialogTrigger asChild>{children}</DialogTrigger>
-        <DialogContent className="sm:max-w-[425px]">
+      <DialogTrigger asChild>{children}</DialogTrigger>
+
+      <DialogContent className="sm:max-w-[425px]">
+        {' '}
+        <form
+          id="create-order-form"
+          onSubmit={(e) => {
+            // esse console não está acontecendo
+            console.log('SUBMIT nativo disparou')
+            e.preventDefault()
+            handleSubmit(onSubmit, onInvalid)(e)
+          }}
+        >
           <DialogHeader>
             <DialogTitle>Criar Pedido</DialogTitle>
             <DialogDescription>
               Escolha se o cliente é avulso ou registrado
             </DialogDescription>
           </DialogHeader>
+
           <div className="grid gap-4">
             <div className="grid gap-3">
-              {/* coloque o valor como hoje e de acordo com o fuso horário do user  */}
-              <Input
-                type="date"
-                value={orderDate}
-                onChange={(e) => setOrderDate(e.target.value)}
-              />
+              {/* Data */}
+              <Input type="date" {...register('date')} />
+              {errors.date?.message && (
+                <p className="text-xs text-red-500">{errors.date.message}</p>
+              )}
 
+              {/* Cliente */}
               <div className="border">tipo de cliente</div>
-              <SelectRegistred
-                type={registredClient}
-                setType={setRegistredClient}
-                onChange={() => {
-                  setClientId('')
-                  setNameClient('')
-                }}
-                placeholder="Selecionar tipo de cliente"
+              <Controller
+                control={control}
+                name="clientType"
+                render={({ field }) => (
+                  <SelectRegistred
+                    type={field.value}
+                    setType={(v) => handleChangeClientType(v as any)}
+                    onChange={() => {}}
+                    placeholder="Selecionar tipo de cliente"
+                  />
+                )}
               />
 
-              {registredClient === 'registred' ? (
+              {clientType === 'registred' ? (
                 <div className="flex flex-col gap-2">
-                  <Combobox
-                    value={clientId}
-                    setValue={setClientId}
-                    values={mockCLient}
-                    placeholder="Selecionar Clinete"
-                    labelParam="name"
-                    valueParam="id"
+                  <Controller
+                    control={control}
+                    name="clientId"
+                    render={({ field }) => (
+                      <Combobox
+                        value={field.value ?? ''}
+                        setValue={(v) => field.onChange(v || null)}
+                        values={mockCLient}
+                        placeholder="Selecionar Clinete"
+                        labelParam="name"
+                        valueParam="id"
+                      />
+                    )}
                   />
-                  {clientId && (
+                  {errors.clientId?.message && (
+                    <p className="text-xs text-red-500">
+                      {errors.clientId.message}
+                    </p>
+                  )}
+
+                  {clientDetails && (
                     <p className="font-bold text-sm">
                       Saldo do cliente:{' '}
                       {clientDetails.clientChips.reduce(
-                        (acc: number, value: any) => (acc += value.chip.value),
+                        (acc: number, v: any) => acc + v.chip.value,
                         0,
                       )}
                     </p>
                   )}
                 </div>
               ) : (
-                <>
+                <div className="flex flex-col gap-1">
                   <Input
-                    value={nameClient}
-                    onChange={(value) => setNameClient(value.target.value)}
                     placeholder="Nome do Cliente"
+                    {...register('clientName')}
                   />
-                </>
+                  {errors.clientName?.message && (
+                    <p className="text-xs text-red-500">
+                      {errors.clientName.message}
+                    </p>
+                  )}
+                </div>
               )}
 
+              {/* Produto */}
               <div className="border">tipo de produto</div>
-              <SelectRegistred
-                type={registredProduct}
-                setType={setRegistredProduct}
-                onChange={() => {
-                  setProductId('')
-                  setNameProduct('')
-                  setQuantityProduct(1)
-                  setPriceProduct(1)
-                }}
-                placeholder="Selecionar tipo de produto"
+              <Controller
+                control={control}
+                name="productType"
+                render={({ field }) => (
+                  <SelectRegistred
+                    type={field.value}
+                    setType={(v) => handleChangeProductType(v as any)}
+                    onChange={() => {}}
+                    placeholder="Selecionar tipo de produto"
+                  />
+                )}
               />
-              {registredProduct === 'registred' ? (
+
+              {productType === 'registred' ? (
                 <div className="flex gap-2">
-                  <Input
-                    type={'number'}
-                    value={quantityProduct}
-                    onChange={(e) => {
-                      const n = Number(e.target.value)
-                      setQuantityProduct(n > 0 ? n : 1)
-                    }}
+                  <Controller
+                    control={control}
+                    name="currentProductQuantity"
+                    render={({ field }) => (
+                      <Input
+                        type="number"
+                        value={`${field.value ?? 1}`}
+                        onChange={(e) => {
+                          const n = Number(e.target.value)
+                          field.onChange(Number.isFinite(n) && n > 0 ? n : 1)
+                        }}
+                      />
+                    )}
                   />
-                  <Combobox
-                    value={productId}
-                    setValue={setProductId}
-                    values={mockProduct}
-                    placeholder="Selecionar Produto"
-                    labelParam="name"
-                    valueParam="id"
+
+                  <Controller
+                    control={control}
+                    name="currentProductId"
+                    render={({ field }) => (
+                      <Combobox
+                        value={field.value ?? ''}
+                        setValue={(v) => field.onChange(v || null)}
+                        values={mockProduct}
+                        placeholder="Selecionar Produto"
+                        labelParam="name"
+                        valueParam="id"
+                      />
+                    )}
                   />
-                  {productDetails && (
+
+                  {registredProductDetails && (
                     <div className="border flex items-center justify-center rounded-md px-2">
-                      {productDetails.value * quantityProduct}
+                      {registredProductDetails.value *
+                        (Number(currentQty) || 1)}
                     </div>
                   )}
                 </div>
               ) : (
                 <div className="flex gap-2">
-                  <Input
-                    type={'number'}
-                    value={quantityProduct}
-                    onChange={(e) => {
-                      const n = Number(e.target.value)
-                      setQuantityProduct(n > 0 ? n : 1)
-                    }}
+                  <Controller
+                    control={control}
+                    name="currentProductQuantity"
+                    render={({ field }) => (
+                      <Input
+                        type="number"
+                        value={`${field.value ?? 1}`}
+                        onChange={(e) => {
+                          const n = Number(e.target.value)
+                          field.onChange(Number.isFinite(n) && n > 0 ? n : 1)
+                        }}
+                      />
+                    )}
                   />
                   <Input
-                    value={nameProduct}
-                    onChange={(value) => setNameProduct(value.target.value)}
                     placeholder="Nome do Produto"
+                    {...register('currentProductName')}
                   />
-                  <Input
-                    type={'number'}
-                    value={priceProduct}
-                    onChange={(e) => {
-                      const n = Number(e.target.value)
-                      setPriceProduct(n > 0 ? n : 1)
-                    }}
-                  />
+                  <Input type="number" {...register('currentProductPrice')} />
                 </div>
               )}
-              <Button
-                type="button"
-                onClick={() => {
-                  console.log('AALGO ->', productDetails)
-                  if (!productDetails) return
 
-                  setOrderProducts((prev) => [
-                    ...prev,
-                    {
-                      productName: productDetails.name,
-                      productId: productDetails.id,
-                      quantity: quantityProduct,
-                      price: productDetails.value,
-                      saved: true,
-                      synced: false,
-                    },
-                  ])
+              {/* Erros do “produto atual” */}
+              {(errors.currentProductId?.message ||
+                errors.currentProductName?.message ||
+                errors.currentProductPrice?.message ||
+                errors.currentProductQuantity?.message) && (
+                <div className="text-xs text-red-500">
+                  {errors.currentProductId?.message && (
+                    <p>{errors.currentProductId.message}</p>
+                  )}
+                  {errors.currentProductName?.message && (
+                    <p>{errors.currentProductName.message}</p>
+                  )}
+                  {errors.currentProductPrice?.message && (
+                    <p>{errors.currentProductPrice.message}</p>
+                  )}
+                  {errors.currentProductQuantity?.message && (
+                    <p>{errors.currentProductQuantity.message}</p>
+                  )}
+                </div>
+              )}
 
-                  setProductId('')
-                  setPriceProduct(1)
-                  setNameProduct('')
-                  setQuantityProduct(1)
-                }}
-              >
+              <Button type="button" onClick={handleAddProduct}>
                 adicionar produto
               </Button>
 
-              <div className="mt-1=">
+              {/* Lista */}
+              <div className="mt-1">
                 {orderProductsUnique.length ? (
-                  orderProductsUnique.map((value) => {
-                    return (
-                      <div className="text-sm" key={value.productName}>
-                        {value.quantity}x - {value.productName} - {value.price}
-                      </div>
-                    )
-                  })
+                  orderProductsUnique.map((p) => (
+                    <div className="text-sm" key={p.productName}>
+                      {p.quantity}x - {p.productName} - {p.price}
+                    </div>
+                  ))
                 ) : (
-                  <div className="">
-                    <p className="text-center text-xs">Nenhum produto</p>
-                  </div>
+                  <p className="text-center text-xs">Nenhum produto</p>
+                )}
+
+                {errors.orderProducts?.message && (
+                  <p className="text-xs text-red-500 mt-1">
+                    {errors.orderProducts.message}
+                  </p>
                 )}
               </div>
 
-              <div className="h-[1px] bg-black/80"></div>
+              <div className="h-[1px] bg-black/80" />
 
+              {/* Totais */}
               <div className="flex flex-col text-sm">
-                <p className="font-bold">
-                  Total: {orderProductsUniqueValue || 0}
-                </p>
+                <p className="font-bold">Total: {orderTotal}</p>
 
-                <p className="font-bold">
-                  Saldo restante do cliente:{' '}
-                  {clientValue - orderProductsUniqueValue || 0}
-                </p>
+                {clientType === 'registred' ? (
+                  <p className="font-bold">
+                    Saldo restante do cliente: {remaining ?? 0}
+                  </p>
+                ) : null}
               </div>
+
+              {/* (Opcional) botão limpar produtos */}
+              {fields.length > 0 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => replace([])}
+                >
+                  limpar produtos
+                </Button>
+              )}
             </div>
           </div>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="outline">Cancelar</Button>
-            </DialogClose>
-            <Button type="submit">Criar Pedido</Button>
-          </DialogFooter>
-        </DialogContent>
-      </form>
+        </form>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant={'outline'} type="button">
+              Cancelar
+            </Button>
+          </DialogClose>
+
+          <Button
+            type="submit"
+            form="create-order-form"
+            onClick={() => console.log('CLICK submit nativo')}
+          >
+            Criar Pedido
+          </Button>
+        </DialogFooter>
+      </DialogContent>
     </Dialog>
   )
 }
