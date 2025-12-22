@@ -1,8 +1,12 @@
 import { type Order, type OrderProduct } from '@prisma/client'
 import { Checkbox } from './ui/checkbox'
 import { api } from '@/lib/api'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useOrders } from '@/hooks/useOrders'
+import { OptionIcon } from 'lucide-react'
+import { OptionsOrder } from './order/OptionsOrder'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 
 const checkOrder = async ({
   orderId,
@@ -13,8 +17,6 @@ const checkOrder = async ({
 }) => {
   const response = await api.post('/order/check', { orderId, to })
 
-  console.log('reponse ->', response)
-
   return response
 }
 
@@ -23,8 +25,33 @@ export const OrderCard = ({
 }: {
   order: Order & { orderProducts: OrderProduct[] }
 }) => {
-  const [checked, seChecked] = useState(order.concluded)
+  const [checked, setChecked] = useState(order.concluded)
   const { changeStatus } = useOrders()
+
+  useEffect(() => {
+    setChecked(order.concluded)
+  }, [order.concluded])
+
+  const queryClient = useQueryClient()
+
+  const checkOrderMutation = useMutation({
+    mutationFn: ({ orderId, to }: { orderId: string; to: boolean }) => {
+      return checkOrder({ orderId, to })
+    },
+    onSuccess: async () => {
+      toast.success('Pedido dado check com sucesso!')
+
+      await queryClient.invalidateQueries({
+        queryKey: ['orders'],
+        refetchType: 'active',
+      })
+      changeStatus()
+    },
+    onError: (err) => {
+      console.log('Error on check', err)
+      toast.error('Erro ao dar check no pedido')
+    },
+  })
 
   return (
     <div className="bg-[#2b2b2b] rounded-xl px-6 py-3">
@@ -43,25 +70,20 @@ export const OrderCard = ({
           </p>
         </div>
 
-        {/* <input
-          className="bg-amber-700 p-4 w-4 h-4 rounded-lg"
-          type="checkbox"
-          name="completed"
-        ></input> */}
-        <Checkbox
-          checked={checked}
-          onClick={async () => {
-            const response = await checkOrder({
-              orderId: order.id,
-              to: !order.concluded,
-            })
+        <div className="flex gap-3 items-center">
+          <Checkbox
+            checked={checked}
+            onCheckedChange={() => {
+              const next = !checked
+              setChecked(next)
+              checkOrderMutation.mutate({ orderId: order.id, to: next })
+            }}
+          />
 
-            if (response.status === 200) {
-              seChecked((checked) => !checked)
-              changeStatus()
-            }
-          }}
-        />
+          <OptionsOrder order={order}>
+            <OptionIcon size={16} />
+          </OptionsOrder>
+        </div>
       </div>
 
       <div className="flex gap-2 mt-1">

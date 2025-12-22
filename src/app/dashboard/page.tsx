@@ -37,6 +37,7 @@ type OrderWithProducts = Order & { orderProducts: OrderProduct[] }
 export default function Dashboard() {
   const { changedStatus } = useOrders()
 
+  // como fazer isso dar refetch todas as vezes? da forma que está só faz refetch na primeira requisição invalidando a querykey, mas o resto n faz nada
   const {
     data: orders = [],
     isLoading,
@@ -50,6 +51,9 @@ export default function Dashboard() {
 
       return data.data
     },
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    staleTime: 0,
   })
 
   const ordersData = useMemo(() => {

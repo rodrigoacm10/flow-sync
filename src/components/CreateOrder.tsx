@@ -19,12 +19,14 @@ import { useMemo } from 'react'
 import { useForm, Controller, useFieldArray } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useOrders } from '@/hooks/useOrders'
 import { api } from '@/lib/api'
 import { CreateOrderSchema } from '@/schemas/orderSchema'
 import { getUniqueProduct } from '@/utils/getUniqueProduct'
 import { getTodayDate } from '@/utils/getTodayDate'
 import { getDateToISO } from '@/utils/getDateToISO'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
+import { useOrders } from '@/hooks/useOrders'
 
 const mockCLient = [
   {
@@ -65,7 +67,26 @@ const mockProduct = [
 ]
 
 export function CreateOrder({ children }: React.ComponentProps<'div'>) {
+  const queryClient = useQueryClient()
+
   const { changeStatus } = useOrders()
+
+  const createOrder = useMutation({
+    mutationFn: async (payload: any) => {
+      await api.post('/order', payload)
+      // return data.data
+    },
+    onSuccess: async () => {
+      toast.success('Pedido criado com sucesso!')
+      //   await queryClient.invalidateQueries({ queryKey: ['orders'] })
+      queryClient.refetchQueries({ queryKey: ['orders'] }) // se você quiser forçar na hora
+      changeStatus()
+    },
+    onError: (err) => {
+      console.log('Error on delete', err)
+      toast.error('Erro ao deletar pedido')
+    },
+  })
 
   const userTimeZone = 'America/Recife'
   // ✅ use input type for RHF (what comes from the form)
@@ -299,8 +320,10 @@ export function CreateOrder({ children }: React.ComponentProps<'div'>) {
     }
 
     // console.log('PAYLOAD:', payload)
-    await api.post('/order', payload)
-    changeStatus()
+
+    createOrder.mutate(payload)
+    // await api.post('/order', payload)
+    // changeStatus()
   }
 
   // não está dando nada no console

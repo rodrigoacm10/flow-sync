@@ -45,19 +45,19 @@ model Chip {
   clientId   String
 
   user        User         @relation(fields: [userId], references: [id])
-  clientChips ClientChip[]
+  client      Client       @relation(fields: [clientId], references: [id])
 }
 
-model ClientChip {
-  id       String  @id @default(uuid())
-  chipId   String
-  clientId String
-  saved    Boolean
-  synced   Boolean @default(false)
+// model ClientChip {
+//   id       String  @id @default(uuid())
+//   chipId   String
+//   clientId String
+//   saved    Boolean
+//   synced   Boolean @default(false)
 
-  chip   Chip   @relation(fields: [chipId], references: [id])
-  client Client @relation(fields: [clientId], references: [id])
-}
+//   chip   Chip   @relation(fields: [chipId], references: [id])
+//   client Client @relation(fields: [clientId], references: [id])
+// }
 
 model Client {
   id         String      @id @default(uuid())
@@ -69,7 +69,7 @@ model Client {
 
   user        User         @relation(fields: [userId], references: [id])
   group       Group?       @relation(fields: [groupId], references: [id])
-  clientChips ClientChip[]
+  chips       Chip[]
   orders      Order[]
 
   @@unique([name, userId])
@@ -112,8 +112,9 @@ model OrderProduct {
   saved       Boolean
   synced      Boolean  @default(false)
 
-  product Product? @relation(fields: [productId], references: [id])
-  order   Order   @relation(fields: [orderId], references: [id])
+
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
 }
 
 model Order {
@@ -127,6 +128,6 @@ model Order {
   concluded    Boolean        @default(false)
 
   user          User           @relation(fields: [userId], references: [id])
-  client        Client?         @relation(fields: [clientId], references: [id]) 
+  client        Client?        @relation(fields: [clientId], references: [id])
   orderProducts OrderProduct[]
 }

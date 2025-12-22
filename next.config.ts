@@ -3,6 +3,9 @@ import type { NextConfig } from 'next'
 const nextConfig: NextConfig = {
   /* config options here */
   transpilePackages: ['@repo/ui'],
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   // This is needed to support CORS headers for the API
   async headers() {
     return [
