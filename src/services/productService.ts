@@ -42,6 +42,7 @@ export class ProductService {
 
   async list(data: ListProduct) {
     return await this.prismaCLient.product.findMany({
+      include: { category: true, orderProducts: true },
       where: { userId: data.userId, categoryId: data.categoryId },
     })
   }

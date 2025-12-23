@@ -1,0 +1,21 @@
+import { CLientService } from '@/services/clientService'
+import { NextRequest, NextResponse } from 'next/server'
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const { id } = await params
+
+    const response = await new CLientService().delete(id)
+
+    return NextResponse.json({ success: true }, { status: 200 })
+  } catch (err: any) {
+    console.error(err)
+    return NextResponse.json(
+      { error: err.message || 'Internal Server Error' },
+      { status: 400 },
+    )
+  }
+}

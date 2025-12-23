@@ -31,7 +31,10 @@ export class GroupService {
   }
 
   async list(userId: string) {
-    return await this.prismaCLient.group.findMany({ where: { userId } })
+    return await this.prismaCLient.group.findMany({
+      where: { userId },
+      include: { clients: true },
+    })
   }
 
   async edit(data: EditGroup) {

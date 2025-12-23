@@ -24,3 +24,19 @@ export async function POST(req: NextRequest) {
     )
   }
 }
+
+export async function GET(req: NextRequest) {
+  try {
+    const userId = await getUserIdFromRequest(req)
+
+    const response = await new ChipService().list({ userId })
+
+    return NextResponse.json({ data: response }, { status: 201 })
+  } catch (err: any) {
+    console.error(err)
+    return NextResponse.json(
+      { error: err.message || 'Internal Server Error' },
+      { status: 400 },
+    )
+  }
+}

@@ -30,6 +30,10 @@ export async function middleware(req: NextRequest) {
 export const config = {
   matcher: [
     '/dashboard/:path*', // páginas protegidas
+    '/clients/:path*', // páginas protegidas
+    '/products/:path*', // páginas protegidas
+    '/chips/:path*', // páginas protegidas
+    '/groups/:path*', // páginas protegidas
     // '/api/:path*', // APIs protegidas
   ],
 }
